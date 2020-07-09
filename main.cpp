@@ -96,7 +96,7 @@ int main() {
 	ConsoleSetup();
 	std::cout << "[+]Console created" << std::endl;
 	std::cout << "[+]Starting...." << std::endl;
-	std::cout << "[+]Searching Proccess";
+	std::cout << "[+]Searching Process";
 	while (true) {
 		int pid = GetProcessIdByName(TARGET_PROCESS_NAME);
 		if (pid == -1) {
