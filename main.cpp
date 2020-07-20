@@ -9,16 +9,16 @@
 #include <filesystem>
 #include <fstream>
 
-#define BUFSIZE 4096
 
 FILE* stream;
-char TARGET_PROCESS_NAME[BUFSIZE] = "PROCESS.exe";
-char PAYLOAD_NAME[BUFSIZE] = "YOUR.dll";
+const char* TARGET_PROCESS_NAME = "PROC.exe";
+const char* PAYLOAD_NAME = "PAYLOAD.dll";
+
+
 
 void ConsoleSetup();
 int GetProcessIdByName(PCSTR name);
 int Inject(int pid);
-
 
 void ConsoleSetup() {
 	AllocConsole();
@@ -49,10 +49,10 @@ int GetProcessIdByName(PCSTR name)
 				pid = GetProcessId(hProcess);
 
 				CloseHandle(hProcess);
-				CloseHandle(snapshot);
 				return pid;
 			}
 		}
+		CloseHandle(snapshot);
 	}
 
 	CloseHandle(snapshot);
@@ -62,20 +62,20 @@ int Inject(int pid) {
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
 	if (INVALID_HANDLE_VALUE == hProcess) {
 		std::cout << "[-]Can't create Handle!!!" << std::endl;
+		CloseHandle(hProcess);
 		return -1;
 	}
-	char PayloadPath[BUFSIZE];
+	char PayloadPath[MAX_PATH];
+	GetFullPathNameA(PAYLOAD_NAME, MAX_PATH, PayloadPath, NULL);
 	
-	
-	std::string s(PAYLOAD_NAME);
-	lstrcpyA(PayloadPath, s.c_str());
 	std::cout << "[+]PayloadPath " << PayloadPath << std::endl;
-	LPVOID RemotePayloadspace = VirtualAllocEx(hProcess, NULL, BUFSIZ, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+	LPVOID RemotePayloadspace = VirtualAllocEx(hProcess, NULL, strlen(PayloadPath), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	std::cout << "[+]RemotePayloadspace 0x" << std::hex << RemotePayloadspace << std::endl;
-	
-	BOOL success = WriteProcessMemory(hProcess, RemotePayloadspace, (LPVOID)PayloadPath, BUFSIZ, NULL);
+
+	BOOL success = WriteProcessMemory(hProcess, RemotePayloadspace, (LPVOID)PayloadPath, strlen(PayloadPath), NULL);
 	if (!success) {
 		std::cout << "[-]Can't write Processmemory!!!" << std::endl;
+		CloseHandle(hProcess);
 		return-1;
 	}
 
@@ -83,7 +83,7 @@ int Inject(int pid) {
 	std::cout << "[+]LoadLibraryA 0x" << std::hex << loadLibraryAddress << std::endl;
 
 	HANDLE remoteThread = CreateRemoteThread(hProcess, NULL, NULL, (LPTHREAD_START_ROUTINE)loadLibraryAddress, RemotePayloadspace, NULL, NULL);
-
+	
 	CloseHandle(remoteThread);
 
 	CloseHandle(hProcess);
@@ -92,7 +92,6 @@ int Inject(int pid) {
 }
 
 int main() {
-	
 	ConsoleSetup();
 	std::cout << "[+]Console created" << std::endl;
 	std::cout << "[+]Starting...." << std::endl;
